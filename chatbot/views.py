@@ -100,7 +100,7 @@ def chat(request):
                 if evento.enlace:
                     lineas_respuesta.append(f"[link] **Más info:** {evento.enlace}")
 
-                lineas_respuesta.append("Cualquier cosa adicional que quieras saber, dime no más y vemos más detalles chévere.")
+                lineas_respuesta.append("Apoya lo local.")
 
                 respuesta_detalle = "\n".join(lineas_respuesta)
 
