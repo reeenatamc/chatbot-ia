@@ -50,7 +50,11 @@ Debes extraer y retornar SOLO un JSON válido con los siguientes campos posibles
 - fecha: fecha específica en formato YYYY-MM-DD (si menciona una fecha como "3 de noviembre", "mañana", "hoy", etc.)
 - fecha_inicio: fecha de inicio del rango en formato YYYY-MM-DD (si pregunta "entre X y Y" o "del X al Y")
 - fecha_fin: fecha de fin del rango en formato YYYY-MM-DD (si pregunta "entre X y Y" o "del X al Y")
-- categoria: una de estas opciones: musica, deporte, cultural, gastronomia, educativo, religioso, feria, teatro, danza, otro
+- hora: hora específica en formato HH:MM (24 horas) si menciona una hora. Ejemplos: "8 de la noche" -> "20:00", "8 pm" -> "20:00", "8:30 pm" -> "20:30", "20:00" -> "20:00", "8 de la mañana" -> "08:00", "8 am" -> "08:00"
+- hora_inicio: hora de inicio del rango en formato HH:MM (24 horas) si menciona un rango de horas. Ejemplos: "entre las 7 y las 9" -> hora_inicio: "19:00", hora_fin: "21:00"
+- hora_fin: hora de fin del rango en formato HH:MM (24 horas) si menciona un rango de horas
+- periodo_dia: uno de estos períodos del día si menciona un período general: "madrugada", "mañana", "tarde", "noche". Ejemplos: "hay eventos en la mañana?" -> periodo_dia: "mañana", "eventos de la tarde" -> periodo_dia: "tarde", "eventos nocturnos" -> periodo_dia: "noche"
+- categoria: una de estas opciones: musica, deporte, cultural, gastronomia, educativo, religioso, feria, teatro, danza, otro. Interpreta variaciones como "música", "musical", "concierto" -> "musica", "deportes" -> "deporte", "cultura" -> "cultural", "gastronómico" -> "gastronomia", etc.
 - ubicacion: nombre de ubicación mencionada
 - texto_busqueda: palabras clave para buscar en título/descripción
 - solo_gratuitos: true si pregunta por eventos gratuitos
@@ -64,17 +68,71 @@ IMPORTANTE - USAR FECHA Y HORA ACTUAL COMO REFERENCIA:
 - Si menciona "3 de noviembre" o "3 de nov", asume año {año_actual} si no se especifica otro año
 - Si menciona fechas relativas como "esta semana", "próxima semana", calcula basándote en la fecha actual
 - Si menciona un RANGO de fechas como "entre el 15 y el 20 de noviembre" o "del 15 al 20 de nov", usa tipo_consulta: "por_rango_fechas" y proporciona fecha_inicio y fecha_fin
+
+IMPORTANTE - INTERPRETACIÓN DE HORAS:
+- Interpreta horas en formato 24 horas (00:00 a 23:59)
+- "8 de la noche", "8 pm", "8 p.m.", "8 de la tarde" -> "20:00"
+- "8 de la mañana", "8 am", "8 a.m." -> "08:00"
+- "mediodía", "12 del día" -> "12:00"
+- "medianoche", "12 de la noche" -> "00:00"
+- "8:30 pm", "8:30 de la noche" -> "20:30"
+- Si menciona un rango de horas como "entre las 7 y las 9 de la noche" o "de 7 a 9 pm", proporciona hora_inicio: "19:00" y hora_fin: "21:00"
+- Puedes combinar fecha con hora: "eventos del 15 de noviembre a las 8 de la noche" -> fecha: "2024-11-15", hora: "20:00"
+- Puedes combinar rango de fechas con rango de horas: "eventos del 15 al 20 de noviembre entre las 7 y las 9 pm" -> fecha_inicio: "2024-11-15", fecha_fin: "2024-11-20", hora_inicio: "19:00", hora_fin: "21:00"
+
+IMPORTANTE - INTERPRETACIÓN DE PERÍODOS DEL DÍA:
+- Si menciona un período general del día (no una hora específica), usa periodo_dia en lugar de hora:
+  - "mañana", "en la mañana", "durante la mañana", "por la mañana", "de mañana" -> periodo_dia: "mañana" (rango: 06:00 - 11:59)
+  - "tarde", "en la tarde", "durante la tarde", "por la tarde", "de tarde" -> periodo_dia: "tarde" (rango: 12:00 - 18:59)
+  - "noche", "en la noche", "durante la noche", "por la noche", "de noche", "nocturnos" -> periodo_dia: "noche" (rango: 19:00 - 23:59)
+  - "madrugada", "en la madrugada", "durante la madrugada", "por la madrugada", "de madrugada" -> periodo_dia: "madrugada" (rango: 00:00 - 05:59)
+- Ejemplos:
+  - "hay eventos en la mañana?" -> periodo_dia: "mañana"
+  - "eventos de la tarde" -> periodo_dia: "tarde"
+  - "eventos nocturnos" -> periodo_dia: "noche"
+  - "eventos de la madrugada" -> periodo_dia: "madrugada"
+- Puedes combinar período del día con fecha: "eventos del 15 de noviembre en la mañana" -> fecha: "2024-11-15", periodo_dia: "mañana"
+- Si menciona una hora específica (ej: "8 de la mañana"), usa hora: "08:00" en lugar de periodo_dia
+
+IMPORTANTE - INTERPRETACIÓN DE CATEGORÍAS:
+- Interpreta variaciones de categorías naturalmente:
+  - "música", "musical", "concierto", "conciertos" -> "musica"
+  - "deportes", "deportivo" -> "deporte"
+  - "cultura", "cultural" -> "cultural"
+  - "gastronomía", "gastronómico", "comida", "alimentario" -> "gastronomia"
+  - "educación", "educativo", "educacional" -> "educativo"
+  - "religión", "religioso" -> "religioso"
+  - "feria", "ferias" -> "feria"
+  - "teatro", "teatral" -> "teatro"
+  - "danza", "danza", "baile" -> "danza"
+
+IMPORTANTE - COMBINACIÓN DE PARÁMETROS:
+- Puedes combinar múltiples parámetros: fecha + hora, fecha + categoría, fecha + hora + categoría, fecha + periodo_dia, rango de fechas + rango de horas + categoría, etc.
+- Ejemplo: "eventos de música el 15 de noviembre a las 8 de la noche" -> tipo_consulta: "por_fecha", fecha: "2024-11-15", hora: "20:00", categoria: "musica"
+- Ejemplo: "eventos entre el 15 y el 20 de noviembre de las 7 a las 9 pm de gastronomía" -> tipo_consulta: "por_rango_fechas", fecha_inicio: "2024-11-15", fecha_fin: "2024-11-20", hora_inicio: "19:00", hora_fin: "21:00", categoria: "gastronomia"
+- Ejemplo: "eventos del 15 de noviembre en la mañana de música" -> tipo_consulta: "por_fecha", fecha: "2024-11-15", periodo_dia: "mañana", categoria: "musica"
+- Ejemplo: "hay eventos en la mañana de deporte?" -> tipo_consulta: "busqueda", periodo_dia: "mañana", categoria: "deporte"
+
 - Retorna SOLO el JSON, sin texto adicional, sin markdown, sin explicaciones
 
 Ejemplos de respuesta:
 - Fecha específica: {{"es_sobre_eventos": true, "es_recomendacion": false, "tipo_consulta": "por_fecha", "fecha": "{fecha_actual}"}}
 - Rango de fechas: {{"es_sobre_eventos": true, "es_recomendacion": false, "tipo_consulta": "por_rango_fechas", "fecha_inicio": "2024-11-15", "fecha_fin": "2024-11-20"}}
+- Fecha con hora: {{"es_sobre_eventos": true, "es_recomendacion": false, "tipo_consulta": "por_fecha", "fecha": "2024-11-15", "hora": "20:00"}}
+- Rango de horas: {{"es_sobre_eventos": true, "es_recomendacion": false, "tipo_consulta": "por_fecha", "fecha": "2024-11-15", "hora_inicio": "19:00", "hora_fin": "21:00"}}
+- Fecha + hora + categoría: {{"es_sobre_eventos": true, "es_recomendacion": false, "tipo_consulta": "por_fecha", "fecha": "2024-11-15", "hora": "20:00", "categoria": "musica"}}
 - Recomendación: {{"es_sobre_eventos": true, "es_recomendacion": true, "tipo_consulta": "recomendacion"}}
 - "que evento me recomiendas": {{"es_sobre_eventos": true, "es_recomendacion": true, "tipo_consulta": "recomendacion"}}
 - "me recomiendas algo": {{"es_sobre_eventos": true, "es_recomendacion": true, "tipo_consulta": "recomendacion"}}
 - "eventos de menos de 20 dólares": {{"es_sobre_eventos": true, "es_recomendacion": false, "tipo_consulta": "busqueda", "precio_maximo": 20}}
-- "quiero saber eventos que cuesten menos de 20 dolares": {{"es_sobre_eventos": true, "es_recomendacion": false, "tipo_consulta": "busqueda", "precio_maximo": 20}}
 - "eventos hasta $15": {{"es_sobre_eventos": true, "es_recomendacion": false, "tipo_consulta": "busqueda", "precio_maximo": 15}}
+- "eventos a las 8 de la noche": {{"es_sobre_eventos": true, "es_recomendacion": false, "tipo_consulta": "busqueda", "hora": "20:00"}}
+- "eventos entre las 7 y las 9 pm": {{"es_sobre_eventos": true, "es_recomendacion": false, "tipo_consulta": "busqueda", "hora_inicio": "19:00", "hora_fin": "21:00"}}
+- "eventos de música del 15 de noviembre a las 8 pm": {{"es_sobre_eventos": true, "es_recomendacion": false, "tipo_consulta": "por_fecha", "fecha": "2024-11-15", "hora": "20:00", "categoria": "musica"}}
+- "hay eventos en la mañana?": {{"es_sobre_eventos": true, "es_recomendacion": false, "tipo_consulta": "busqueda", "periodo_dia": "mañana"}}
+- "eventos de la tarde": {{"es_sobre_eventos": true, "es_recomendacion": false, "tipo_consulta": "busqueda", "periodo_dia": "tarde"}}
+- "eventos nocturnos": {{"es_sobre_eventos": true, "es_recomendacion": false, "tipo_consulta": "busqueda", "periodo_dia": "noche"}}
+- "eventos del 15 de noviembre en la mañana": {{"es_sobre_eventos": true, "es_recomendacion": false, "tipo_consulta": "por_fecha", "fecha": "2024-11-15", "periodo_dia": "mañana"}}
 """
     
     try:
@@ -382,6 +440,116 @@ def ejecutar_consulta_eventos(parametros):
                 Q(descripcion__icontains=texto) |
                 Q(ubicacion__icontains=texto)
             )
+    
+    # Filtrar por hora específica o rango de horas - se aplica a cualquier tipo de consulta
+    hora = parametros.get('hora')
+    hora_inicio = parametros.get('hora_inicio')
+    hora_fin = parametros.get('hora_fin')
+    
+    if hora:
+        # Hora específica: filtrar eventos que empiecen en esa hora (buscar toda esa hora)
+        try:
+            # Parsear hora en formato HH:MM
+            hora_parts = hora.split(':')
+            if len(hora_parts) == 2:
+                hora_hh = int(hora_parts[0])
+                hora_mm = int(hora_parts[1])
+                # Buscar eventos que empiecen en esa hora (toda la hora si minutos son 0, o rango de ±30 min si hay minutos)
+                if hora_mm == 0:
+                    # Si es hora exacta (ej: 20:00), buscar toda esa hora
+                    query = query.filter(fecha_inicio__hour=hora_hh)
+                else:
+                    # Si tiene minutos específicos (ej: 20:30), buscar eventos entre 20:00 y 21:00
+                    query = query.filter(fecha_inicio__hour=hora_hh)
+            elif len(hora_parts) == 1:
+                # Solo se especificó la hora sin minutos, buscar toda esa hora
+                hora_hh = int(hora_parts[0])
+                query = query.filter(fecha_inicio__hour=hora_hh)
+        except (ValueError, AttributeError):
+            # Si no se puede parsear la hora, ignorar este filtro
+            pass
+    
+    elif hora_inicio and hora_fin:
+        # Rango de horas: filtrar eventos que empiecen en ese rango
+        try:
+            hora_inicio_parts = hora_inicio.split(':')
+            hora_fin_parts = hora_fin.split(':')
+            if len(hora_inicio_parts) == 2 and len(hora_fin_parts) == 2:
+                hora_inicio_hh = int(hora_inicio_parts[0])
+                hora_inicio_mm = int(hora_inicio_parts[1])
+                hora_fin_hh = int(hora_fin_parts[0])
+                hora_fin_mm = int(hora_fin_parts[1])
+                
+                # Si el rango cruza medianoche (ej: 22:00 a 02:00)
+                if hora_fin_hh < hora_inicio_hh or (hora_fin_hh == hora_inicio_hh and hora_fin_mm <= hora_inicio_mm):
+                    # Rango que cruza medianoche
+                    query = query.filter(
+                        Q(fecha_inicio__hour__gt=hora_inicio_hh) |
+                        Q(fecha_inicio__hour__lt=hora_fin_hh) |
+                        Q(fecha_inicio__hour=hora_inicio_hh, fecha_inicio__minute__gte=hora_inicio_mm) |
+                        Q(fecha_inicio__hour=hora_fin_hh, fecha_inicio__minute__lt=hora_fin_mm)
+                    )
+                else:
+                    # Rango normal dentro del mismo día
+                    query = query.filter(
+                        Q(fecha_inicio__hour__gt=hora_inicio_hh, fecha_inicio__hour__lt=hora_fin_hh) |
+                        Q(fecha_inicio__hour=hora_inicio_hh, fecha_inicio__minute__gte=hora_inicio_mm) |
+                        Q(fecha_inicio__hour=hora_fin_hh, fecha_inicio__minute__lt=hora_fin_mm)
+                    )
+        except (ValueError, AttributeError):
+            # Si no se puede parsear la hora, ignorar este filtro
+            pass
+    
+    elif hora_inicio:
+        # Solo hora de inicio: filtrar eventos que empiecen desde esa hora
+        try:
+            hora_inicio_parts = hora_inicio.split(':')
+            if len(hora_inicio_parts) == 2:
+                hora_inicio_hh = int(hora_inicio_parts[0])
+                hora_inicio_mm = int(hora_inicio_parts[1])
+                query = query.filter(
+                    Q(fecha_inicio__hour__gt=hora_inicio_hh) |
+                    Q(fecha_inicio__hour=hora_inicio_hh, fecha_inicio__minute__gte=hora_inicio_mm)
+                )
+        except (ValueError, AttributeError):
+            pass
+    
+    elif hora_fin:
+        # Solo hora de fin: filtrar eventos que empiecen hasta esa hora
+        try:
+            hora_fin_parts = hora_fin.split(':')
+            if len(hora_fin_parts) == 2:
+                hora_fin_hh = int(hora_fin_parts[0])
+                hora_fin_mm = int(hora_fin_parts[1])
+                query = query.filter(
+                    Q(fecha_inicio__hour__lt=hora_fin_hh) |
+                    Q(fecha_inicio__hour=hora_fin_hh, fecha_inicio__minute__lt=hora_fin_mm)
+                )
+        except (ValueError, AttributeError):
+            pass
+    
+    # Filtrar por período del día - se aplica a cualquier tipo de consulta si está presente
+    # Solo si no se especificó hora o rango de horas (ya que periodo_dia es más general)
+    periodo_dia = parametros.get('periodo_dia')
+    if periodo_dia and not hora and not hora_inicio and not hora_fin:
+        if periodo_dia == "madrugada":
+            # Madrugada: 00:00 - 05:59
+            query = query.filter(fecha_inicio__hour__gte=0, fecha_inicio__hour__lte=5)
+        elif periodo_dia == "mañana":
+            # Mañana: 06:00 - 11:59
+            query = query.filter(fecha_inicio__hour__gte=6, fecha_inicio__hour__lte=11)
+        elif periodo_dia == "tarde":
+            # Tarde: 12:00 - 18:59
+            query = query.filter(fecha_inicio__hour__gte=12, fecha_inicio__hour__lte=18)
+        elif periodo_dia == "noche":
+            # Noche: 19:00 - 23:59
+            query = query.filter(fecha_inicio__hour__gte=19, fecha_inicio__hour__lte=23)
+    
+    # Filtrar por categoría - se aplica a cualquier tipo de consulta si está presente
+    categoria = parametros.get('categoria')
+    if categoria and tipo_consulta != 'por_categoria':
+        # Si no es una consulta específica por categoría pero hay categoría en los parámetros, aplicarla
+        query = query.filter(categoria=categoria)
     
     # Filtrar por precio máximo (incluye eventos gratuitos) - se aplica a cualquier tipo de consulta
     precio_maximo = parametros.get('precio_maximo')
