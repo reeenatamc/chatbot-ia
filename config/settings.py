@@ -139,10 +139,58 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 GEMINI_API_KEY = 'AIzaSyBrbwPfE0of5FeKPuRWV7n8OBa1SYoq5xE'
 
 # Django Unfold Configuration
+from django.urls import reverse_lazy
+
 UNFOLD = {
-    "SITE_TITLE": "Chatbot IA - Admin",
-    "SITE_HEADER": "Chatbot IA",
+    "SITE_TITLE": "CantaClaro - Admin",
+    "SITE_HEADER": "CantaClaro",
+    "SITE_SUBHEADER": "Gestión de Eventos en Loja",
     "SITE_URL": "/",
     "SHOW_HISTORY": True,
     "SHOW_VIEW_ON_SITE": True,
+    "BORDER_RADIUS": "16px",
+    "SITE_SYMBOL": "celebration",  # Ícono de celebración/evento
+    
+    # Colores personalizados basados en el chatbot
+    # Gradiente principal: #667eea (azul morado) a #764ba2 (morado)
+    "COLORS": {
+        "base": {
+            # Base oscura inspirada en el fondo del chatbot
+            "50": "oklch(98% 0.002 260)",
+            "100": "oklch(95% 0.005 260)",
+            "200": "oklch(90% 0.008 260)",
+            "300": "oklch(82% 0.012 260)",
+            "400": "oklch(70% 0.018 260)",
+            "500": "oklch(55% 0.025 260)",
+            "600": "oklch(45% 0.030 260)",
+            "700": "oklch(35% 0.035 260)",
+            "800": "oklch(25% 0.032 260)",
+            "900": "oklch(18% 0.028 260)",
+            "950": "oklch(12% 0.025 260)",
+        },
+        "primary": {
+            # Gradiente principal del chatbot convertido a oklch
+            # #667eea = rgb(102, 126, 234) ≈ oklch(65% 0.14 280)
+            # #764ba2 = rgb(118, 75, 162) ≈ oklch(50% 0.14 310)
+            "50": "oklch(97% 0.025 285)",
+            "100": "oklch(94% 0.045 285)",
+            "200": "oklch(90% 0.065 285)",
+            "300": "oklch(85% 0.085 285)",
+            "400": "oklch(75% 0.115 290)",
+            "500": "oklch(68% 0.135 295)",  # Intermedio entre los dos
+            "600": "oklch(65% 0.140 295)",  # #667eea principal
+            "700": "oklch(58% 0.140 305)",  # #764ba2
+            "800": "oklch(50% 0.135 310)",
+            "900": "oklch(43% 0.125 315)",
+            "950": "oklch(35% 0.110 320)",
+        },
+        "font": {
+            "subtle-light": "oklch(60% 0.010 260)",
+            "subtle-dark": "oklch(70% 0.010 260)",
+            "default-light": "oklch(45% 0.015 260)",
+            "default-dark": "oklch(80% 0.010 260)",
+            "important-light": "oklch(25% 0.020 260)",
+            "important-dark": "oklch(95% 0.005 260)",
+        },
+    },
 }
