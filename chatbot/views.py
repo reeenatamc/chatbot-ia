@@ -27,30 +27,51 @@ def chat(request):
         try:
             data = json.loads(request.body)
             user_message = data.get('message', '')
+            offset = int(data.get('offset', 0))
             
             if not user_message:
                 return JsonResponse({'error': 'Mensaje vacío'}, status=400)
             
             lower_message = user_message.strip().lower()
             
-            # Respuestas quemadas para preguntas frecuentes
-            faq_responses = {
-                'eventos de hoy': 'eventos de hoy',
-                'eventos de esta semana': 'eventos de esta semana',
-                'eventos de este mes': 'eventos de este mes',
-                'eventos gratis': 'eventos gratis',
-                'eventos de música': 'eventos de música',
-                'eventos de teatro': 'eventos de teatro'
+            # Respuestas quemadas para preguntas frecuentes - mapeo directo a parámetros
+            # Para evitar gastar peticiones a Gemini, estas consultas van directamente a la base
+            faq_parametros = {
+                'eventos de hoy': {
+                    'tipo_consulta': 'por_fecha',
+                    'fecha': timezone.now().date().strftime('%Y-%m-%d')
+                },
+                'eventos de esta semana': {
+                    'tipo_consulta': 'proximos',
+                    'dias_proximos': 7
+                },
+                'eventos de este mes': {
+                    'tipo_consulta': 'por_fecha',
+                    'fecha': timezone.now().date().strftime('%Y-%m')
+                },
+                'eventos gratis': {
+                    'tipo_consulta': 'gratuitos',
+                    'solo_gratuitos': True
+                },
+                'eventos de música': {
+                    'tipo_consulta': 'por_categoria',
+                    'categoria': 'musica'
+                },
+                'eventos de teatro': {
+                    'tipo_consulta': 'por_categoria',
+                    'categoria': 'teatro'
+                }
             }
             
-            # Verificar si es una pregunta frecuente
-            is_faq = False
-            for faq_key in faq_responses.keys():
+            # Verificar si es una pregunta frecuente y obtener parámetros directamente
+            parametros_faq = None
+            for faq_key in faq_parametros.keys():
                 if faq_key in lower_message:
-                    is_faq = True
-                    # Normalizar la consulta para que funcione con el sistema existente
-                    user_message = faq_responses[faq_key]
+                    parametros_faq = faq_parametros[faq_key]
+                    parametros_faq['es_sobre_eventos'] = True
+                    parametros_faq['es_recomendacion'] = False
                     break
+            
             detalle_prefix = "dame más información sobre "
             eventos_info = []
 
@@ -115,11 +136,65 @@ def chat(request):
 
                 return JsonResponse({
                     'response': respuesta_detalle,
-                    'events': eventos_info
+                    'events': eventos_info,
+                    'has_more': False,
+                    'total_events': 1
+                })
+
+            # Si es una FAQ quemada, usar los parámetros directamente sin pasar por Gemini
+            if parametros_faq:
+                # Ejecutar consulta directamente a la base de datos
+                eventos = ejecutar_consulta_eventos(parametros_faq)
+                
+                # Paginación: limitar a 6 eventos inicialmente
+                eventos_lista = list(eventos)
+                total_eventos = len(eventos_lista)
+                eventos_paginados = eventos_lista[offset:offset + 6]
+                has_more = offset + 6 < total_eventos
+                
+                # Si es una carga de más eventos (offset > 0), solo retornar eventos sin respuesta
+                if offset > 0:
+                    respuesta = ''
+                    # Formatear solo los eventos sin usar Gemini
+                    eventos_info = []
+                    for evento in eventos_paginados:
+                        fecha_inicio = timezone.localtime(evento.fecha_inicio)
+                        precio_texto = "Gratis" if evento.es_gratuito else f"${evento.precio}"
+                        ubicacion_texto = evento.ubicacion or "Ubicación por confirmar"
+                        eventos_info.append({
+                            'titulo': evento.titulo,
+                            'descripcion': evento.descripcion or '',
+                            'fecha': fecha_inicio.strftime('%d/%m/%Y %H:%M'),
+                            'ubicacion': ubicacion_texto,
+                            'precio': precio_texto,
+                            'categoria': evento.get_categoria_display()
+                        })
+                else:
+                    # Formatear respuesta usando Gemini (solo para el formato del texto, ya tenemos los eventos)
+                    respuesta, eventos_info = formatear_respuesta_eventos(eventos_paginados, parametros_faq)
+                
+                return JsonResponse({
+                    'response': respuesta,
+                    'events': eventos_info,
+                    'has_more': has_more,
+                    'total_events': total_eventos
                 })
 
             # Paso 1: Gemini interpreta el mensaje y extrae parámetros
             parametros = interpretar_consulta_usuario(user_message)
+            
+            # Verificar si es una despedida
+            es_despedida = parametros.get('es_despedida', False)
+            
+            if es_despedida:
+                # Mensaje de confirmación para salir
+                respuesta = '¿Quieres continuar conversando o prefieres salir del chat?'
+                
+                return JsonResponse({
+                    'response': respuesta,
+                    'events': [],
+                    'confirm_exit': True  # Flag para mostrar botones de confirmación
+                })
             
             # Verificar si la pregunta es sobre eventos
             es_sobre_eventos = parametros.get('es_sobre_eventos', True)
@@ -141,6 +216,12 @@ def chat(request):
             
             # Solo es recomendación si Gemini lo detectó Y no hay parámetros específicos
             es_recomendacion_simple = es_recomendacion and not tiene_parametros_especificos
+            
+            # Inicializar variables de paginación
+            has_more = False
+            total_eventos = 0
+            eventos_info = []
+            respuesta = ''
             
             if not es_sobre_eventos:
                 # Usar fallback para preguntas fuera de tema
@@ -170,6 +251,7 @@ def chat(request):
                         'precio': precio_texto,
                         'categoria': evento_aleatorio.get_categoria_display()
                     }]
+                    total_eventos = 1
                 else:
                     respuesta = 'Lo siento, no hay eventos disponibles en este momento. Pronto habrá más eventos chéveres en Loja.'
                     eventos_info = []
@@ -177,12 +259,38 @@ def chat(request):
                 # Paso 2: Ejecutar consulta SQL predefinida con los parámetros
                 eventos = ejecutar_consulta_eventos(parametros)
                 
-                # Paso 3: Formatear respuesta usando Gemini
-                respuesta, eventos_info = formatear_respuesta_eventos(eventos, parametros)
+                # Paginación: limitar a 6 eventos inicialmente
+                eventos_lista = list(eventos)
+                total_eventos = len(eventos_lista)
+                eventos_paginados = eventos_lista[offset:offset + 6]
+                has_more = offset + 6 < total_eventos
+                
+                # Si es una carga de más eventos (offset > 0), solo retornar eventos sin respuesta
+                if offset > 0:
+                    respuesta = ''
+                    # Formatear solo los eventos sin usar Gemini
+                    eventos_info = []
+                    for evento in eventos_paginados:
+                        fecha_inicio = timezone.localtime(evento.fecha_inicio)
+                        precio_texto = "Gratis" if evento.es_gratuito else f"${evento.precio}"
+                        ubicacion_texto = evento.ubicacion or "Ubicación por confirmar"
+                        eventos_info.append({
+                            'titulo': evento.titulo,
+                            'descripcion': evento.descripcion or '',
+                            'fecha': fecha_inicio.strftime('%d/%m/%Y %H:%M'),
+                            'ubicacion': ubicacion_texto,
+                            'precio': precio_texto,
+                            'categoria': evento.get_categoria_display()
+                        })
+                else:
+                    # Paso 3: Formatear respuesta usando Gemini solo en la primera carga
+                    respuesta, eventos_info = formatear_respuesta_eventos(eventos_paginados, parametros)
             
             return JsonResponse({
                 'response': respuesta,
-                'events': eventos_info
+                'events': eventos_info,
+                'has_more': has_more,
+                'total_events': total_eventos
             })
             
         except Exception as e:
