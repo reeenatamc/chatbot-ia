@@ -10,7 +10,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const welcomeVideo = document.querySelector('.welcome-video');
     const userInput = document.getElementById('userInput');
     const sendButton = document.getElementById('sendButton');
-    const micButton = document.getElementById('micButton');
     const chatMessages = document.getElementById('chatMessages');
 
     function isNearBottom() {
@@ -869,13 +868,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Event listener para el botón de micrófono
-    if (micButton) {
-        micButton.addEventListener('click', function() {
-            // TODO: Implementar funcionalidad de grabación de audio
-            console.log('Botón de micrófono clickeado - funcionalidad pendiente');
-            // Por ahora, mostrar un mensaje o preparar para la implementación futura
-        });
-    }
 
     function attachCardInteraction(cardElement, event) {
         cardElement.classList.add('event-card--interactive');
