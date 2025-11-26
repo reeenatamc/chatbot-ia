@@ -345,6 +345,12 @@ def ejecutar_consulta_eventos(parametros):
     
     tipo_consulta = parametros.get('tipo_consulta', 'todos')
     
+    # Filtrar eventos pasados automáticamente (excepto si se busca una fecha específica)
+    # Si es consulta por fecha, no filtrar aquí (se filtra después según la fecha buscada)
+    if tipo_consulta not in ['por_fecha', 'por_rango_fechas']:
+        # Para otros tipos de consulta, filtrar eventos pasados automáticamente
+        query = query.filter(fecha_inicio__gte=timezone.now())
+    
     if tipo_consulta == 'por_fecha':
         fecha, granularidad = formatear_fecha(parametros.get('fecha'))
         if fecha:

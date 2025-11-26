@@ -571,8 +571,55 @@ document.addEventListener('DOMContentLoaded', function() {
         card.appendChild(lightLayer);
         card.appendChild(content);
 
+        // Crear wrapper que contiene la tarjeta y el mapa
+        const cardWrapper = document.createElement('div');
+        cardWrapper.className = 'event-card-wrapper';
+        
+        // Agregar la tarjeta al wrapper
+        cardWrapper.appendChild(card);
+        
+        // Crear div para el mapa de Google Maps (SIEMPRE crear para mantener consistencia)
+        const mapContainer = document.createElement('div');
+        mapContainer.className = 'event-card__map';
+        
+        // Crear iframe de Google Maps (formato simple sin API key)
+        if (event.ubicacion) {
+            const locationQuery = encodeURIComponent(event.ubicacion + ', Loja, Ecuador');
+            const mapUrl = `https://www.google.com/maps?q=${locationQuery}&output=embed`;
+            const mapIframe = document.createElement('iframe');
+            mapIframe.src = mapUrl;
+            mapIframe.width = '100%';
+            mapIframe.height = '100';
+            mapIframe.frameBorder = '0';
+            mapIframe.style.border = '0';
+            mapIframe.allowFullscreen = true;
+            mapIframe.loading = 'lazy';
+            mapIframe.referrerPolicy = 'no-referrer-when-downgrade';
+            
+            mapContainer.appendChild(mapIframe);
+        } else {
+            // Si no hay ubicación, mostrar un placeholder o mapa genérico de Loja
+            const locationQuery = encodeURIComponent('Loja, Ecuador');
+            const mapUrl = `https://www.google.com/maps?q=${locationQuery}&output=embed`;
+            const mapIframe = document.createElement('iframe');
+            mapIframe.src = mapUrl;
+            mapIframe.width = '100%';
+            mapIframe.height = '100';
+            mapIframe.frameBorder = '0';
+            mapIframe.style.border = '0';
+            mapIframe.allowFullscreen = true;
+            mapIframe.loading = 'lazy';
+            mapIframe.referrerPolicy = 'no-referrer-when-downgrade';
+            mapIframe.style.opacity = '0.6';
+            
+            mapContainer.appendChild(mapIframe);
+        }
+        
+        // SIEMPRE agregar el contenedor del mapa para mantener todas las tarjetas iguales
+        cardWrapper.appendChild(mapContainer);
+        
         attachCardInteraction(card, event);
-        return card;
+        return cardWrapper;
     }
 
     function addEventCards(events, showLoadMore = false) {
@@ -589,9 +636,12 @@ document.addEventListener('DOMContentLoaded', function() {
         grid.className = 'event-cards-grid';
 
         events.forEach((event) => {
-            const card = createEventCard(event);
-            grid.appendChild(card);
-            cardObserver.observe(card);
+            const cardWrapper = createEventCard(event);
+            const card = cardWrapper.querySelector('.event-card');
+            grid.appendChild(cardWrapper);
+            if (card) {
+                cardObserver.observe(card);
+            }
         });
 
         wrapper.appendChild(grid);
