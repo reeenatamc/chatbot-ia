@@ -37,6 +37,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }, { threshold: 0.2 });
     
+    // Variables para paginación
+    let lastMessage = '';
+    let currentOffset = 0;
+    let hasMoreEvents = false;
+    
     // Reproducir video automáticamente al cargar la pantalla principal
     if (welcomeVideo) {
         const playVideo = () => {
@@ -101,6 +106,21 @@ document.addEventListener('DOMContentLoaded', function() {
     ];
 
     // Función para crear y mostrar las pastillas de preguntas frecuentes
+    function hideFaqPills() {
+        const faqContainer = document.getElementById('faqPillsContainer');
+        if (!faqContainer) return;
+        
+        // Solo ocultar si está visible
+        if (faqContainer.style.display !== 'none') {
+            faqContainer.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+            faqContainer.style.opacity = '0';
+            faqContainer.style.transform = 'translateY(-10px)';
+            setTimeout(() => {
+                faqContainer.style.display = 'none';
+            }, 300);
+        }
+    }
+
     function createFaqPills() {
         const faqContainer = document.getElementById('faqPillsContainer');
         if (!faqContainer) return;
@@ -116,12 +136,7 @@ document.addEventListener('DOMContentLoaded', function() {
             pill.setAttribute('data-query', faq.query);
             pill.addEventListener('click', () => {
                 // Ocultar suavemente el contenedor de pastillas
-                faqContainer.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-                faqContainer.style.opacity = '0';
-                faqContainer.style.transform = 'translateY(-10px)';
-                setTimeout(() => {
-                    faqContainer.style.display = 'none';
-                }, 300);
+                hideFaqPills();
                 // Enviar mensaje mostrando el texto amigable de la pastilla
                 sendMessageWithText(faq.query, { displayText: faq.text });
             });
@@ -188,6 +203,74 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.warn('Error al detener el video:', error);
             }
         }
+    }
+    
+    // Función para cerrar el chat después de mostrar despedida del servidor
+    function closeChatAfterGoodbye(mensajeDespedida) {
+        // Iniciar transición de fade out del chat container
+        if (chatContainer) {
+            chatContainer.classList.add('closing');
+        }
+        
+        // Esperar a que termine la transición de fade out
+        setTimeout(() => {
+            // Limpiar todos los mensajes excepto el mensaje de bienvenida inicial
+            const allMessages = chatMessages.querySelectorAll('.message:not(.welcome-chat-message)');
+            allMessages.forEach(msg => msg.remove());
+            
+            // Ocultar el chat container
+            chatContainer.style.display = 'none';
+            chatContainer.classList.remove('active');
+            chatContainer.classList.remove('closing');
+            
+            // Mostrar welcome screen con fade in
+            if (welcomeScreen) {
+                welcomeScreen.style.display = 'flex';
+                welcomeScreen.style.opacity = '0';
+                
+                // Forzar reflow para que la transición funcione
+                void welcomeScreen.offsetWidth;
+                
+                // Iniciar fade in
+                setTimeout(() => {
+                    welcomeScreen.style.opacity = '1';
+                }, 10);
+            }
+            
+            // Reiniciar y reproducir el video
+            if (welcomeVideo) {
+                welcomeVideo.currentTime = 0;
+                welcomeVideo.play().catch(() => {});
+            }
+            
+            // Limpiar el input
+            if (userInput) {
+                userInput.value = '';
+            }
+        }, 500); // Esperar el tiempo de la transición CSS (0.5s)
+    }
+    
+    // Función para cerrar el chat con mensaje de despedida (usado por el botón X)
+    function closeChat() {
+        // Mensajes de despedida naturales y variados
+        const despedidas = [
+            '¡Nos vemos luego, mijo! Que disfrutes los eventos en Loja. 😊',
+            '¡Hasta pronto! Espero haberte ayudado a encontrar eventos chéveres. 👋',
+            '¡Chao! Recuerda apoyar lo local. Nos vemos en los eventos de Loja. 🎉',
+            '¡Hasta la próxima! Que la pases bien en los eventos. 😄',
+            '¡Nos vemos! Si necesitas más información sobre eventos, aquí estaré. 👋'
+        ];
+        
+        // Seleccionar un mensaje aleatorio
+        const mensajeDespedida = despedidas[Math.floor(Math.random() * despedidas.length)];
+        
+        // Agregar mensaje de despedida del bot
+        addMessage(mensajeDespedida, false);
+        
+        // Esperar 3 segundos para que el usuario pueda leer el mensaje de despedida antes de cerrar
+        setTimeout(() => {
+            closeChatAfterGoodbye(mensajeDespedida);
+        }, 3000);
     }
     
     // Función para volver a la pantalla de bienvenida
@@ -493,7 +576,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return card;
     }
 
-    function addEventCards(events) {
+    function addEventCards(events, showLoadMore = false) {
         if (!events || !events.length) {
             return;
         }
@@ -519,16 +602,146 @@ document.addEventListener('DOMContentLoaded', function() {
             wrapper.classList.add('event-cards-wrapper--visible');
         });
 
+        // Agregar botón "Cargar más" fuera del contenedor de tarjetas
+        if (showLoadMore) {
+            const loadMoreWrapper = document.createElement('div');
+            loadMoreWrapper.className = 'load-more-wrapper';
+            
+            const loadMoreButton = document.createElement('button');
+            loadMoreButton.className = 'load-more-button';
+            loadMoreButton.textContent = 'Cargar más';
+            loadMoreButton.addEventListener('click', loadMoreEvents);
+            
+            loadMoreWrapper.appendChild(loadMoreButton);
+            chatMessages.appendChild(loadMoreWrapper);
+        }
+
+        if (shouldScroll) {
+            scrollToBottom();
+        }
+    }
+    
+    async function loadMoreEvents() {
+        if (!hasMoreEvents) return;
+        
+        currentOffset += 6;
+        setLoading(true);
+        
+        try {
+            const response = await fetch('/api/chat/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    message: lastMessage,
+                    offset: currentOffset
+                })
+            });
+
+            const data = await response.json();
+            
+            if (data.error) {
+                console.error('Error al cargar más eventos:', data.error);
+            } else if (data.events && data.events.length > 0) {
+                // Remover el botón "Cargar más" anterior
+                const previousLoadMore = chatMessages.querySelector('.load-more-wrapper');
+                if (previousLoadMore) {
+                    previousLoadMore.remove();
+                }
+                
+                // Agregar solo los nuevos eventos (sin mensaje del bot)
+                addEventCards(data.events, data.has_more || false);
+                hasMoreEvents = data.has_more || false;
+                
+                // Hacer scroll hacia abajo para mostrar los nuevos eventos
+                scrollToBottom();
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    function addBotResponse(text, events = [], hasMore = false) {
+        addMessage(text, false);
+        if (events && events.length) {
+            addEventCards(events, hasMore);
+        }
+    }
+
+    function addBotResponseWithActions(text, events = []) {
+        const shouldScroll = isNearBottom();
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message bot-message';
+        
+        // Contenedor del mensaje
+        const messageContentWrapper = document.createElement('div');
+        messageContentWrapper.className = 'message-content-wrapper';
+        messageContentWrapper.appendChild(createMessageParagraph(text));
+        
+        // Contenedor para los botones de acción
+        const actionsContainer = document.createElement('div');
+        actionsContainer.className = 'message-actions';
+        
+        // Botón Continuar
+        const continueButton = document.createElement('button');
+        continueButton.className = 'action-button action-button--continue';
+        continueButton.textContent = 'Continuar';
+        continueButton.addEventListener('click', () => {
+            // Simplemente continuar, no hacer nada especial
+            actionsContainer.remove();
+        });
+        
+        // Botón Salir
+        const exitButton = document.createElement('button');
+        exitButton.className = 'action-button action-button--exit';
+        exitButton.textContent = 'Salir';
+        exitButton.addEventListener('click', () => {
+            // Confirmar salida y cerrar el chat
+            confirmExitChat();
+        });
+        
+        actionsContainer.appendChild(continueButton);
+        actionsContainer.appendChild(exitButton);
+        messageContentWrapper.appendChild(actionsContainer);
+        
+        messageDiv.appendChild(messageContentWrapper);
+        chatMessages.appendChild(messageDiv);
+        
+        // Agregar clase "last"
+        const allMessages = chatMessages.querySelectorAll('.message');
+        allMessages.forEach(msg => msg.classList.remove('last'));
+        messageDiv.classList.add('last');
+        
+        if (events && events.length) {
+            addEventCards(events);
+        }
+        
         if (shouldScroll) {
             scrollToBottom();
         }
     }
 
-    function addBotResponse(text, events = []) {
-        addMessage(text, false);
-        if (events && events.length) {
-            addEventCards(events);
-        }
+    function confirmExitChat() {
+        // Generar mensaje de despedida final
+        const despedidas = [
+            '¡Nos vemos luego, mijo! Que disfrutes los eventos en Loja. 😊',
+            '¡Hasta pronto! Espero haberte ayudado a encontrar eventos chéveres. 👋',
+            '¡Chao! Recuerda apoyar lo local. Nos vemos en los eventos de Loja. 🎉',
+            '¡Hasta la próxima! Que la pases bien en los eventos. 😄',
+            '¡Nos vemos! Si necesitas más información sobre eventos, aquí estaré. 👋'
+        ];
+        const mensajeDespedida = despedidas[Math.floor(Math.random() * despedidas.length)];
+        
+        // Mostrar mensaje de despedida
+        addMessage(mensajeDespedida, false);
+        
+        // Esperar 3 segundos antes de cerrar
+        setTimeout(() => {
+            closeChatAfterGoodbye(mensajeDespedida);
+        }, 3000);
     }
 
     function setLoading(isLoading) {
@@ -576,6 +789,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const trimmed = message.trim();
         if (trimmed === '') return;
 
+        // Ocultar las FAQ pills cuando se envía cualquier mensaje
+        hideFaqPills();
+
         // Solo mostrar mensaje del usuario si no viene de una pastilla
         if (!hideUserMessage) {
             addMessage(displayText || trimmed, true);
@@ -587,13 +803,22 @@ document.addEventListener('DOMContentLoaded', function() {
         showTypingIndicator();
 
         try {
+            // Guardar el mensaje para la paginación
+            if (!options.hideUserMessage) {
+                lastMessage = trimmed;
+                currentOffset = 0;
+            }
+            
             // Enviar petición al backend
             const response = await fetch('/api/chat/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ message: trimmed })
+                body: JSON.stringify({ 
+                    message: trimmed,
+                    offset: currentOffset
+                })
             });
 
             const data = await response.json();
@@ -604,7 +829,23 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.error) {
                 addBotResponse('Lo siento, hubo un error al procesar tu mensaje.');
             } else {
-                addBotResponse(data.response, data.events || []);
+                // Guardar estado de paginación
+                hasMoreEvents = data.has_more || false;
+                
+                // Si hay confirmación de salida, agregar botones de acción
+                if (data.confirm_exit) {
+                    addBotResponseWithActions(data.response, data.events || []);
+                } else {
+                    addBotResponse(data.response, data.events || [], hasMoreEvents);
+                }
+                
+                // Si la respuesta indica que debe cerrarse el chat (despedida confirmada)
+                if (data.close_chat) {
+                    // Esperar 3 segundos para que el usuario pueda leer el mensaje de despedida
+                    setTimeout(() => {
+                        closeChatAfterGoodbye(data.response);
+                    }, 3000);
+                }
             }
         } catch (error) {
             hideTypingIndicator();

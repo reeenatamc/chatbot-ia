@@ -44,6 +44,7 @@ FECHA Y HORA ACTUAL (usa esta información como referencia):
 Mensaje del usuario: "{mensaje_usuario}"
 
 Debes extraer y retornar SOLO un JSON válido con los siguientes campos posibles:
+- es_despedida: true si el usuario quiere terminar la conversación o despedirse. Ejemplos: "adiós", "chao", "hasta luego", "me voy", "nos vemos", "hasta pronto", "chao mijo", "nos vemos luego", "gracias, adiós", "listo, hasta luego", "ya me voy", etc. Si es_despedida es true, no necesitas procesar otros campos.
 - es_sobre_eventos: true si la pregunta es sobre eventos en Loja, false si es sobre otro tema
 - es_recomendacion: true SOLO si el usuario está pidiendo una recomendación genérica SIN especificar criterios (fecha, categoría, ubicación, etc.). Ejemplos: "que evento me recomiendas", "recomiéndame algo", "me recomiendas algo", "sugiere un evento", "dame una recomendación". IMPORTANTE: Si el usuario dice "recomiéndame eventos del 15 de noviembre" o "recomiéndame eventos de música", NO es una recomendación simple, es una consulta con parámetros específicos, así que es_recomendacion debe ser false. Solo es true cuando pide una recomendación sin criterios específicos.
 - tipo_consulta: "por_fecha", "por_rango_fechas", "por_categoria", "por_ubicacion", "gratuitos", "proximos", "busqueda", "todos", "recomendacion" (solo si es_sobre_eventos es true). Si es_recomendacion es true, tipo_consulta debe ser "recomendacion"
@@ -77,8 +78,11 @@ IMPORTANTE - INTERPRETACIÓN DE HORAS:
 - "medianoche", "12 de la noche" -> "00:00"
 - "8:30 pm", "8:30 de la noche" -> "20:30"
 - Si menciona un rango de horas como "entre las 7 y las 9 de la noche" o "de 7 a 9 pm", proporciona hora_inicio: "19:00" y hora_fin: "21:00"
+- Si menciona "a partir de las X" o "desde las X" o "después de las X", usa hora_inicio: "XX:00" (sin hora_fin). Ejemplos: "a partir de las 5pm" -> hora_inicio: "17:00", "desde las 8 de la noche" -> hora_inicio: "20:00", "después de las 3 de la tarde" -> hora_inicio: "15:00"
+- Si menciona "hasta las X" o "antes de las X", usa hora_fin: "XX:00" (sin hora_inicio). Ejemplos: "hasta las 10pm" -> hora_fin: "22:00", "antes de las 6 de la tarde" -> hora_fin: "18:00"
 - Puedes combinar fecha con hora: "eventos del 15 de noviembre a las 8 de la noche" -> fecha: "2024-11-15", hora: "20:00"
 - Puedes combinar rango de fechas con rango de horas: "eventos del 15 al 20 de noviembre entre las 7 y las 9 pm" -> fecha_inicio: "2024-11-15", fecha_fin: "2024-11-20", hora_inicio: "19:00", hora_fin: "21:00"
+- Puedes combinar fecha + hora_inicio + categoría + precio: "eventos de teatro el 7 de diciembre a partir de las 5pm que cuesten menos de 10 dólares" -> tipo_consulta: "por_fecha", fecha: "2024-12-07", hora_inicio: "17:00", categoria: "teatro", precio_maximo: 10
 
 IMPORTANTE - INTERPRETACIÓN DE PERÍODOS DEL DÍA:
 - Si menciona un período general del día (no una hora específica), usa periodo_dia en lugar de hora:
@@ -107,15 +111,24 @@ IMPORTANTE - INTERPRETACIÓN DE CATEGORÍAS:
   - "danza", "danza", "baile" -> "danza"
 
 IMPORTANTE - COMBINACIÓN DE PARÁMETROS:
-- Puedes combinar múltiples parámetros: fecha + hora, fecha + categoría, fecha + hora + categoría, fecha + periodo_dia, rango de fechas + rango de horas + categoría, etc.
+- Puedes combinar múltiples parámetros: fecha + hora, fecha + categoría, fecha + hora + categoría + precio, fecha + periodo_dia, rango de fechas + rango de horas + categoría, etc.
+- Cuando hay múltiples criterios, el tipo_consulta debe ser el del criterio más específico (fecha > categoría > búsqueda):
+  - Si hay fecha específica o rango de fechas, usa tipo_consulta: "por_fecha" o "por_rango_fechas"
+  - Si hay categoría pero NO fecha, usa tipo_consulta: "por_categoria"
+  - Si hay solo texto de búsqueda o criterios generales sin fecha ni categoría específica, usa tipo_consulta: "busqueda"
 - Ejemplo: "eventos de música el 15 de noviembre a las 8 de la noche" -> tipo_consulta: "por_fecha", fecha: "2024-11-15", hora: "20:00", categoria: "musica"
 - Ejemplo: "eventos entre el 15 y el 20 de noviembre de las 7 a las 9 pm de gastronomía" -> tipo_consulta: "por_rango_fechas", fecha_inicio: "2024-11-15", fecha_fin: "2024-11-20", hora_inicio: "19:00", hora_fin: "21:00", categoria: "gastronomia"
 - Ejemplo: "eventos del 15 de noviembre en la mañana de música" -> tipo_consulta: "por_fecha", fecha: "2024-11-15", periodo_dia: "mañana", categoria: "musica"
+- Ejemplo: "eventos de teatro el 7 de diciembre a partir de las 5pm que cuesten menos de 10 dólares" -> tipo_consulta: "por_fecha", fecha: "2024-12-07", hora_inicio: "17:00", categoria: "teatro", precio_maximo: 10
 - Ejemplo: "hay eventos en la mañana de deporte?" -> tipo_consulta: "busqueda", periodo_dia: "mañana", categoria: "deporte"
 
 - Retorna SOLO el JSON, sin texto adicional, sin markdown, sin explicaciones
 
 Ejemplos de respuesta:
+- Despedida: {{"es_despedida": true}}
+- "adiós": {{"es_despedida": true}}
+- "chao, gracias": {{"es_despedida": true}}
+- "hasta luego, mijo": {{"es_despedida": true}}
 - Fecha específica: {{"es_sobre_eventos": true, "es_recomendacion": false, "tipo_consulta": "por_fecha", "fecha": "{fecha_actual}"}}
 - Rango de fechas: {{"es_sobre_eventos": true, "es_recomendacion": false, "tipo_consulta": "por_rango_fechas", "fecha_inicio": "2024-11-15", "fecha_fin": "2024-11-20"}}
 - Fecha con hora: {{"es_sobre_eventos": true, "es_recomendacion": false, "tipo_consulta": "por_fecha", "fecha": "2024-11-15", "hora": "20:00"}}
@@ -528,6 +541,49 @@ def ejecutar_consulta_eventos(parametros):
         except (ValueError, AttributeError):
             pass
     
+    # Aplicar filtro de fecha SIEMPRE que esté presente en los parámetros, sin importar el tipo_consulta
+    # Esto permite combinar filtros (ej: categoría + fecha + hora + precio)
+    # Solo aplicar si no se aplicó ya en el bloque del tipo_consulta
+    fecha_ya_aplicada = tipo_consulta in ['por_fecha', 'por_rango_fechas', 'proximos']
+    
+    if not fecha_ya_aplicada:
+        # Verificar si hay una fecha en los parámetros que no se haya aplicado
+        fecha_param = parametros.get('fecha')
+        if fecha_param:
+            fecha, granularidad = formatear_fecha(fecha_param)
+            if fecha:
+                if granularidad == "mes":
+                    fecha_fin = _primer_dia_siguiente_mes(fecha)
+                else:
+                    fecha_fin = fecha + timedelta(days=1)
+                query = query.filter(fecha_inicio__gte=fecha, fecha_inicio__lt=fecha_fin)
+        
+        # También verificar fecha_inicio si existe
+        fecha_inicio_param = parametros.get('fecha_inicio')
+        if fecha_inicio_param and not fecha_param:
+            fecha_inicio, granularidad_inicio = formatear_fecha(fecha_inicio_param)
+            if fecha_inicio:
+                fecha_fin_param = parametros.get('fecha_fin')
+                if fecha_fin_param:
+                    # Hay un rango de fechas
+                    fecha_fin, granularidad_fin = formatear_fecha(fecha_fin_param)
+                    if fecha_fin:
+                        if granularidad_fin == "mes":
+                            fecha_fin_dia = _primer_dia_siguiente_mes(fecha_fin)
+                        else:
+                            fecha_fin_dia = fecha_fin + timedelta(days=1)
+                        query = query.filter(
+                            fecha_inicio__gte=fecha_inicio,
+                            fecha_inicio__lt=fecha_fin_dia
+                        )
+                else:
+                    # Solo fecha de inicio
+                    if granularidad_inicio == "mes":
+                        fecha_fin = _primer_dia_siguiente_mes(fecha_inicio)
+                    else:
+                        fecha_fin = fecha_inicio + timedelta(days=1)
+                    query = query.filter(fecha_inicio__gte=fecha_inicio, fecha_inicio__lt=fecha_fin)
+    
     # Filtrar por período del día - se aplica a cualquier tipo de consulta si está presente
     # Solo si no se especificó hora o rango de horas (ya que periodo_dia es más general)
     periodo_dia = parametros.get('periodo_dia')
@@ -546,9 +602,11 @@ def ejecutar_consulta_eventos(parametros):
             query = query.filter(fecha_inicio__hour__gte=19, fecha_inicio__hour__lte=23)
     
     # Filtrar por categoría - se aplica a cualquier tipo de consulta si está presente
+    # Esto permite combinar filtros (ej: categoría + fecha + hora + precio)
     categoria = parametros.get('categoria')
     if categoria and tipo_consulta != 'por_categoria':
         # Si no es una consulta específica por categoría pero hay categoría en los parámetros, aplicarla
+        # (si tipo_consulta es 'por_categoria', ya se aplicó arriba)
         query = query.filter(categoria=categoria)
     
     # Filtrar por precio máximo (incluye eventos gratuitos) - se aplica a cualquier tipo de consulta
@@ -571,16 +629,25 @@ def formatear_respuesta_eventos(eventos, parametros):
     """
     Formatea los eventos encontrados en una respuesta amigable usando Gemini.
     """
-    if not eventos.exists():
-        return "No encontré eventos que coincidan con tu búsqueda. ¿Podrías intentar con otros criterios?", []
+    # Manejar tanto QuerySets como listas
+    if hasattr(eventos, 'exists'):
+        # Es un QuerySet
+        if not eventos.exists():
+            return "No encontré eventos que coincidan con tu búsqueda. ¿Podrías intentar con otros criterios?", []
+    else:
+        # Es una lista u otra estructura iterable
+        if not eventos or len(eventos) == 0:
+            return "No encontré eventos que coincidan con tu búsqueda. ¿Podrías intentar con otros criterios?", []
     
     # Preparar información de eventos para Gemini
     eventos_info = []
     for evento in eventos:
+        # Convertir la fecha de UTC a la zona horaria local antes de formatear
+        fecha_inicio = timezone.localtime(evento.fecha_inicio)
         eventos_info.append({
             'titulo': evento.titulo,
             'descripcion': evento.descripcion[:200],  # Limitar descripción
-            'fecha': evento.fecha_inicio.strftime('%d/%m/%Y %H:%M'),
+            'fecha': fecha_inicio.strftime('%d/%m/%Y %H:%M'),
             'ubicacion': evento.ubicacion,
             'precio': 'Gratis' if evento.es_gratuito else f'${evento.precio}',
             'categoria': evento.get_categoria_display()
@@ -620,7 +687,7 @@ Genera una respuesta CORTA, PERSONAL, DESCRIPTIVA y con un toque de broma cuando
 1. Si hay 1 evento: Di algo como "Mmm, te recomiendo este evento, se ve que va a estar chevere" o "Este evento se ve interesante, te lo recomiendo"
 2. Si hay varios eventos: Menciona brevemente que encontraste varios y que se ven cheveres
 3. Si hay criterios específicos (precio, categoría, etc.): Puedes bromear un poco de forma amigable, por ejemplo:
-   - Si buscó eventos baratos/precio máximo: "Mmm, encontré una lista de eventos que van a hacer que no te quede chiro daño" o "Encontré varios eventos que no te van a dejar en la quiebra, pues"
+   - Si buscó eventos baratos/precio máximo: "Mmm, encontré una lista de eventos que van a hacer que no te quede chiro daño" o "Encontré varios eventos que no te van a dejar en la quiebra"
    - Si buscó eventos gratuitos: "Encontré eventos que no te van a costar ni un centavo"
    - Si buscó por categoría: "Encontré varios eventos de [categoría] que se ven cheveres"
 4. Usa palabras DESCRIPTIVAS sobre la actividad del evento (ej: "se ve entretenido", "va a estar genial", "suena interesante", "parece divertido", etc.)
@@ -632,7 +699,6 @@ JERGA LOJANA SUTIL (usa de forma natural):
 - "Chevere" o "chévere" (genial, bueno)
 - "Mmm" al inicio para pensar
 - "Se ve que va a estar..." (expresión de expectativa positiva)
-- "Pues" al final ocasionalmente
 - "No más" al final ocasionalmente
 - "Chiro daño" (mucho dinero/gasto) - ejemplo: "no te va a quedar chiro daño"
 - "Quiebra" (sin dinero) - ejemplo: "no te va a dejar en la quiebra"
@@ -648,7 +714,7 @@ IMPORTANTE:
 Ejemplos de buenas respuestas:
 - Sin criterios: "Mmm, te recomiendo este evento, se ve que va a estar chevere. Revisa la tarjeta para más detalles."
 - Con precio máximo: "Mmm, encontré una lista de eventos que van a hacer que no te quede chiro daño. Revisa las tarjetas."
-- Con varios eventos: "Encontré varios eventos que se ven interesantes, pues. Te muestro las tarjetas."
+- Con varios eventos: "Encontré varios eventos que se ven interesantes. Te muestro las tarjetas."
 """
     
     try:
@@ -693,13 +759,12 @@ Genera una respuesta CORTA, PERSONAL y RELEVANTE (máximo 2 frases) que:
 2. Use palabras descriptivas sobre la actividad (entretenido, genial, interesante, divertido, emocionante, etc.)
 3. Sea entusiasta pero natural, como recomendando a un amigo
 4. NO repitas toda la información técnica (fecha, ubicación, precio) - eso ya está en la tarjeta
-5. Usa jerga lojana sutil (chevere, pues, no más, mmm)
+5. Usa jerga lojana sutil (chevere, no más, mmm)
 
 JERGA LOJANA SUTIL:
 - "Chevere" o "chévere" (genial, bueno)
 - "Mmm" al inicio para pensar
 - "Se ve que va a estar..." (expresión de expectativa positiva)
-- "Pues" al final ocasionalmente
 - "No más" al final ocasionalmente
 
 IMPORTANTE:
@@ -710,7 +775,7 @@ IMPORTANTE:
 - NO repitas información técnica que ya está en la tarjeta
 
 Ejemplos de buenas respuestas según contexto:
-- Si dice "estoy aburrida": "Mmm, este evento se ve que va a estar chevere y te va a ayudar a no aburrirte, pues. Revisa la tarjeta."
+- Si dice "estoy aburrida": "Mmm, este evento se ve que va a estar chevere y te va a ayudar a no aburrirte. Revisa la tarjeta."
 - Si dice "busco algo divertido": "Te recomiendo este evento, se ve súper divertido. Mira los detalles en la tarjeta."
 - Si solo pide recomendación: "Mmm, te recomiendo este evento, se ve interesante. Revisa la tarjeta para más detalles."
 
@@ -742,17 +807,17 @@ Pregunta del usuario: "{mensaje_usuario}"
 Tu tarea es:
 1. Responder brevemente a la pregunta (máximo una línea, muy corto)
 2. Siempre redirigir amigablemente a preguntar sobre eventos en Loja
-3. Usa jerga lojana sutil (pues, no más, chevere, vaya) de forma natural
+3. Usa jerga lojana sutil (no más, chevere, vaya) de forma natural
 
 IMPORTANTE:
 - Máximo una línea de respuesta
 - Responde de forma amigable y natural con jerga lojana sutil
 - Siempre termina redirigiendo a eventos
 - No uses markdown, solo texto natural
-- Usa expresiones como "pues", "no más", "chevere" de forma sutil
+- Usa expresiones como "no más", "chevere" de forma sutil
 
 Ejemplos de respuestas:
-- "No tengo esa información, pero puedo ayudarte a encontrar eventos en Loja, pues. ¿Qué tipo de eventos te interesan?"
+- "No tengo esa información, pero puedo ayudarte a encontrar eventos en Loja. ¿Qué tipo de eventos te interesan?"
 - "Esa pregunta está fuera de mi alcance, pero puedo contarte sobre eventos en Loja, no más. ¿Qué eventos buscas?"
 - "No puedo ayudarte con eso, pero sé mucho sobre eventos en Loja. ¿Qué eventos te gustaría conocer, mijo?"
 
