@@ -136,7 +136,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Google Gemini API
-GEMINI_API_KEY = 'AIzaSyBrbwPfE0of5FeKPuRWV7n8OBa1SYoq5xE'
+GEMINI_API_KEY = 'AIzaSyACvfirXEPah1WZzTMgVlv3cLnJHCOvXgQ'
 
 # Django Unfold Configuration
 from django.urls import reverse_lazy
