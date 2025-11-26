@@ -604,9 +604,9 @@ def ejecutar_consulta_eventos(parametros):
     # Filtrar por categoría - se aplica a cualquier tipo de consulta si está presente
     # Esto permite combinar filtros (ej: categoría + fecha + hora + precio)
     categoria = parametros.get('categoria')
-    if categoria and tipo_consulta != 'por_categoria':
-        # Si no es una consulta específica por categoría pero hay categoría en los parámetros, aplicarla
-        # (si tipo_consulta es 'por_categoria', ya se aplicó arriba)
+    if categoria:
+        # Aplicar filtro de categoría siempre que esté presente, independientemente del tipo_consulta
+        # (si tipo_consulta es 'por_categoria', ya se aplicó arriba, pero no importa aplicarlo de nuevo)
         query = query.filter(categoria=categoria)
     
     # Filtrar por precio máximo (incluye eventos gratuitos) - se aplica a cualquier tipo de consulta
@@ -618,6 +618,42 @@ def ejecutar_consulta_eventos(parametros):
         query = query.filter(
             Q(precio=0) | Q(precio__lte=precio_max_decimal)
         )
+    
+    # REFUERZO FINAL DEL FILTRO DE FECHA: Asegurar que siempre se aplique correctamente
+    # Esto garantiza que si hay un parámetro de fecha, siempre se respete, incluso si hubo otros filtros
+    fecha_refuerzo = parametros.get('fecha')
+    if fecha_refuerzo:
+        fecha_ref, granularidad_ref = formatear_fecha(fecha_refuerzo)
+        if fecha_ref:
+            if granularidad_ref == "mes":
+                # Para meses: filtrar SOLO eventos de ese mes específico
+                fecha_fin_ref = _primer_dia_siguiente_mes(fecha_ref)
+                query = query.filter(fecha_inicio__gte=fecha_ref, fecha_inicio__lt=fecha_fin_ref)
+            else:
+                # Para fechas específicas: filtrar solo ese día
+                fecha_fin_ref = fecha_ref + timedelta(days=1)
+                query = query.filter(fecha_inicio__gte=fecha_ref, fecha_inicio__lt=fecha_fin_ref)
+    
+    # También verificar fecha_inicio para refuerzo
+    if not fecha_refuerzo:
+        fecha_inicio_ref = parametros.get('fecha_inicio')
+        if fecha_inicio_ref:
+            fecha_inicio_ref_parsed, granularidad_inicio_ref = formatear_fecha(fecha_inicio_ref)
+            if fecha_inicio_ref_parsed:
+                fecha_fin_ref_param = parametros.get('fecha_fin')
+                if fecha_fin_ref_param:
+                    # Rango de fechas
+                    fecha_fin_ref_parsed, granularidad_fin_ref = formatear_fecha(fecha_fin_ref_param)
+                    if fecha_fin_ref_parsed:
+                        if granularidad_fin_ref == "mes":
+                            fecha_fin_rango_ref = _primer_dia_siguiente_mes(fecha_fin_ref_parsed)
+                        else:
+                            fecha_fin_rango_ref = fecha_fin_ref_parsed + timedelta(days=1)
+                        query = query.filter(fecha_inicio__gte=fecha_inicio_ref_parsed, fecha_inicio__lt=fecha_fin_rango_ref)
+                elif granularidad_inicio_ref == "mes":
+                    # Solo mes de inicio: filtrar solo ese mes
+                    fecha_fin_rango_ref = _primer_dia_siguiente_mes(fecha_inicio_ref_parsed)
+                    query = query.filter(fecha_inicio__gte=fecha_inicio_ref_parsed, fecha_inicio__lt=fecha_fin_rango_ref)
     
     # Ordenar por fecha de inicio
     query = query.order_by('fecha_inicio')

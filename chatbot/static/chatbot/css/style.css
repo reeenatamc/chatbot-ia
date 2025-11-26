@@ -1385,33 +1385,407 @@ h1 {
     border-bottom-left-radius: 10px;
 }
 
-.chat-input {
-    display: flex;
+#poda {
+    display: none;
+    align-items: center;
     justify-content: center;
-    padding: 26px;
-    background: transparent;
+    position: relative;
+    width: 100%;
+    max-width: 500px;
+    margin: 26px auto;
+    z-index: 11;
 }
 
-.chat-input-glass {
+.chat-container.active ~ #poda {
+    display: flex;
+}
+
+.white,
+.border,
+.darkBorderBg,
+.glow {
+    max-height: 60px;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    overflow: hidden;
+    z-index: -1;
+    border-radius: 24px;
+    filter: blur(3px);
+}
+
+.input-wrapper {
+    --icon-size: 20px;
     position: relative;
+    width: 100%;
+}
+
+.input {
+    background-color: #010201;
+    border: none;
+    width: 100%;
+    height: 48px;
+    border-radius: 24px;
+    color: white;
+    padding-left: calc(18px + var(--icon-size) + 8px);
+    padding-right: 50px;
+    font-size: 14px;
+    font-family: 'Poppins', sans-serif;
+    position: relative;
+    z-index: 1;
+}
+
+.search-icon {
+    position: absolute;
+    width: var(--icon-size);
+    top: 50%;
+    left: 18px;
+    transform: translateY(-50%);
+    overflow: visible;
+    color: #c0b9c0;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.search-icon path {
+    transform-box: fill-box;
+    transform-origin: center;
+}
+
+.input-wrapper:is(:hover, :focus-within) .search-icon path {
+    animation: pop 0.5s var(--d);
+}
+
+.search-icon path:nth-of-type(1) {
+    --d: 0.24s;
+    --r: 20deg;
+    --s: 1.5;
+}
+
+.search-icon path:nth-of-type(2) {
+    --d: 0.12s;
+    --r: 10deg;
+    --s: 1.4;
+}
+
+.search-icon path:nth-of-type(3) {
+    --d: 0s;
+    --r: 0deg;
+    --s: 1.25;
+}
+
+@keyframes pop {
+    50% {
+        scale: var(--s, 1);
+        rotate: var(--r, 0deg);
+    }
+}
+
+.input::placeholder {
+    color: #c0b9c0;
+    font-size: 13px;
+}
+
+.input:focus {
+    outline: none;
+}
+
+#poda:focus-within > #input-mask {
+    display: none;
+}
+
+#input-mask {
+    pointer-events: none;
+    width: 100px;
+    height: 18px;
+    position: absolute;
+    background: linear-gradient(90deg, transparent, black);
+    top: 15px;
+    left: 70px;
+}
+
+#pink-mask {
+    pointer-events: none;
+    width: 30px;
+    height: 18px;
+    position: absolute;
+    background: #cf30aa;
+    top: 8px;
+    left: 5px;
+    filter: blur(20px);
+    opacity: 0.8;
+    transition: all 2s;
+}
+
+#poda:hover > #pink-mask {
+    opacity: 0;
+}
+
+.white {
+    max-height: 54px;
+    width: calc(100% - 14px);
+    border-radius: 22px;
+    filter: blur(2px);
+}
+
+.white::before {
+    content: "";
+    z-index: -2;
+    text-align: center;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(83deg);
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    background-repeat: no-repeat;
+    background-position: 0 0;
+    filter: brightness(1.4);
+    background-image: conic-gradient(
+        rgba(0, 0, 0, 0) 0%,
+        #a099d8,
+        rgba(0, 0, 0, 0) 8%,
+        rgba(0, 0, 0, 0) 50%,
+        #dfa2da,
+        rgba(0, 0, 0, 0) 58%
+    );
+    transition: all 2s;
+}
+
+.border {
+    max-height: 50px;
+    width: calc(100% - 22px);
+    border-radius: 23px;
+    filter: blur(0.5px);
+}
+
+.border::before {
+    content: "";
+    z-index: -2;
+    text-align: center;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(70deg);
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    filter: brightness(1.3);
+    background-repeat: no-repeat;
+    background-position: 0 0;
+    background-image: conic-gradient(
+        #1c191c,
+        #402fb5 5%,
+        #1c191c 14%,
+        #1c191c 50%,
+        #cf30aa 60%,
+        #1c191c 64%
+    );
+    transition: all 2s;
+}
+
+.darkBorderBg {
+    max-height: 56px;
+    width: calc(100% - 4px);
+}
+
+.darkBorderBg::before {
+    content: "";
+    z-index: -2;
+    text-align: center;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(82deg);
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    background-repeat: no-repeat;
+    background-position: 0 0;
+    background-image: conic-gradient(
+        rgba(0, 0, 0, 0),
+        #18116a,
+        rgba(0, 0, 0, 0) 10%,
+        rgba(0, 0, 0, 0) 50%,
+        #6e1b60,
+        rgba(0, 0, 0, 0) 60%
+    );
+    transition: all 2s;
+}
+
+#poda:hover > .darkBorderBg::before {
+    transform: translate(-50%, -50%) rotate(262deg);
+}
+
+#poda:hover > .glow::before {
+    transform: translate(-50%, -50%) rotate(240deg);
+}
+
+#poda:hover > .white::before {
+    transform: translate(-50%, -50%) rotate(263deg);
+}
+
+#poda:hover > .border::before {
+    transform: translate(-50%, -50%) rotate(250deg);
+}
+
+#poda:hover > .darkBorderBg::before {
+    transform: translate(-50%, -50%) rotate(-98deg);
+}
+
+#poda:hover > .glow::before {
+    transform: translate(-50%, -50%) rotate(-120deg);
+}
+
+#poda:hover > .white::before {
+    transform: translate(-50%, -50%) rotate(-97deg);
+}
+
+#poda:hover > .border::before {
+    transform: translate(-50%, -50%) rotate(-110deg);
+}
+
+#poda:focus-within > .darkBorderBg::before {
+    transform: translate(-50%, -50%) rotate(442deg);
+    transition: all 4s;
+}
+
+#poda:focus-within > .glow::before {
+    transform: translate(-50%, -50%) rotate(420deg);
+    transition: all 4s;
+}
+
+#poda:focus-within > .white::before {
+    transform: translate(-50%, -50%) rotate(443deg);
+    transition: all 4s;
+}
+
+#poda:focus-within > .border::before {
+    transform: translate(-50%, -50%) rotate(430deg);
+    transition: all 4s;
+}
+
+.glow {
+    overflow: hidden;
+    filter: blur(30px);
+    opacity: 0.4;
+    max-height: 110px;
+    width: calc(100% + 40px);
+}
+
+.glow:before {
+    content: "";
+    z-index: -2;
+    text-align: center;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(60deg);
+    position: absolute;
+    width: 999px;
+    height: 999px;
+    background-repeat: no-repeat;
+    background-position: 0 0;
+    background-image: conic-gradient(
+        #000,
+        #402fb5 5%,
+        #000 38%,
+        #000 50%,
+        #cf30aa 60%,
+        #000 87%
+    );
+    transition: all 2s;
+}
+
+@keyframes rotate {
+    100% {
+        transform: translate(-50%, -50%) rotate(450deg);
+    }
+}
+
+@keyframes leftright {
+    0% {
+        transform: translate(0px, 0px);
+        opacity: 1;
+    }
+    49% {
+        transform: translate(250px, 0px);
+        opacity: 0;
+    }
+    80% {
+        transform: translate(-40px, 0px);
+        opacity: 0;
+    }
+    100% {
+        transform: translate(0px, 0px);
+        opacity: 1;
+    }
+}
+
+
+.filterBorder {
+    height: 36px;
+    width: 34px;
+    position: absolute;
+    overflow: hidden;
+    top: 6px;
+    right: 6px;
+    border-radius: 18px;
+}
+
+.filterBorder::before {
+    content: "";
+    text-align: center;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(90deg);
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    background-repeat: no-repeat;
+    background-position: 0 0;
+    filter: brightness(1.35);
+    background-image: conic-gradient(
+        rgba(0, 0, 0, 0),
+        #3d3a4f,
+        rgba(0, 0, 0, 0) 50%,
+        rgba(0, 0, 0, 0) 50%,
+        #3d3a4f,
+        rgba(0, 0, 0, 0) 100%
+    );
+    animation: rotate 4s linear infinite;
+}
+
+.send-button-icon {
+    position: absolute;
+    top: 6px;
+    right: 6px;
     display: flex;
     align-items: center;
-    gap: 10px;
+    justify-content: center;
+    z-index: 2;
+    max-height: 36px;
+    max-width: 34px;
+    height: 36px;
+    width: 34px;
+    isolation: isolate;
+    overflow: hidden;
+    border-radius: 18px;
+    background: linear-gradient(180deg, #161329, black, #1d1b4b);
+    border: 1px solid transparent;
+    cursor: pointer;
+    padding: 0;
+    border: none;
+}
+
+.send-button-icon:hover {
+    transform: scale(1.05);
+}
+
+.send-gif {
     width: 100%;
-    max-width: 720px;
-    padding: 6px 12px;
-    border-radius: 999px;
-    background: linear-gradient(
-        -75deg,
-        rgba(255, 255, 255, 0.05),
-        rgba(255, 255, 255, 0.15),
-        rgba(255, 255, 255, 0.05)
-    );
-    backdrop-filter: blur(12px) saturate(140%);
-    -webkit-backdrop-filter: blur(12px) saturate(140%);
-    box-shadow: 
-        0 2px 8px rgba(0, 0, 0, 0.08),
-        0 1px 2px rgba(0, 0, 0, 0.04);
+    height: 100%;
+    object-fit: cover;
+    border-radius: 16px;
+    position: relative;
+    z-index: 1;
 }
 
 #chatMessages .event-cards-wrapper {
@@ -1926,132 +2300,8 @@ h1 {
     }
 }
 
-#userInput {
-    flex: 1;
-    border: none;
-    background: transparent;
-    font-size: 0.9rem;
-    font-family: 'Poppins', sans-serif;
-    color: rgba(28, 28, 36, 0.9);
-    outline: none;
-    padding: 0;
-    line-height: 1.4;
-    position: relative;
-    z-index: 1;
-    font-weight: 400;
-}
-
-#userInput::placeholder {
-    color: rgba(28, 28, 36, 0.45);
-    font-weight: 400;
-    letter-spacing: 0.01em;
-    opacity: 0.7;
-    transition: opacity 0.2s ease;
-}
-
-#userInput:focus::placeholder {
-    opacity: 0.5;
-}
-
-#userInput:focus {
-    color: rgba(18, 18, 28, 0.95);
-}
-
-.input-icon-button {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    color: rgba(28, 28, 36, 0.7);
-    transition: all 0.2s ease;
-    flex-shrink: 0;
-    padding: 0;
-    position: relative;
-    z-index: 1;
-}
-
-.input-icon-button:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: rgba(28, 28, 36, 0.9);
-    transform: scale(1.05);
-}
-
-.input-icon-button:active {
-    transform: scale(0.95);
-}
-
-.input-icon-button svg {
-    width: 18px;
-    height: 18px;
-}
-
-.send-gif-button {
-    overflow: visible;
-    width: 34px;
-    height: 34px;
-    position: relative;
-    transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-}
-
-.send-gif-button::before {
-    content: '';
-    position: absolute;
-    width: 38px;
-    height: 38px;
-    background: radial-gradient(ellipse, rgba(255, 118, 146, 0.5), rgba(255, 118, 146, 0));
-    border-radius: 50%;
-    filter: blur(8px);
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: -2;
-    transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-}
-
-.send-gif-button::after {
-    content: '';
-    position: absolute;
-    width: 38px;
-    height: 38px;
-    background: radial-gradient(ellipse, rgba(118, 182, 255, 0.5), rgba(118, 182, 255, 0));
-    border-radius: 50%;
-    filter: blur(8px);
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) rotate(90deg);
-    z-index: -1;
-    transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-}
-
-.send-gif-button.bounce {
-    animation: sendSimpleScale 0.3s ease-out;
-}
-
-@keyframes sendSimpleScale {
-    0% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.15);
-    }
-    100% {
-        transform: scale(1);
-    }
-}
-
-.send-gif {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 50%;
-    position: relative;
-    z-index: 1;
-}
+/* Input styles ahora están en .input arriba */
+/* Botón de enviar ahora está en .send-button-icon arriba */
 
 /* Scrollbar personalizado */
 .chat-messages::-webkit-scrollbar {
