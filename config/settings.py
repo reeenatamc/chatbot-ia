@@ -10,24 +10,27 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+from dotenv import load_dotenv
+
+load_dotenv(BASE_DIR / \".env\")
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-@487*1a93p$mx^@dq)^n=9elzcpg*bz835%p)y9260^e488a(9'
-
+SECRET_KEY = os.environ.get(
+    "DJANGO_SECRET_KEY", "django-insecure-local-development-only"
+)
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
-
-
+DEBUG = os.environ.get("DEBUG", "False").lower() in ("1", "true", "yes")
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 # Application definition
 
 INSTALLED_APPS = [
@@ -136,8 +139,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Google Gemini API
-GEMINI_API_KEY = 'AIzaSyACvfirXEPah1WZzTMgVlv3cLnJHCOvXgQ'
-
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 # Django Unfold Configuration
 from django.urls import reverse_lazy
 
