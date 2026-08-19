@@ -1,7 +1,7 @@
 # chatbot-ia
 
-**CantaClaro** answers questions about what is happening in Loja, Ecuador —
-concerts, fairs, public events — in the way someone from Loja would answer them.
+**CantaClaro** answers questions about what is happening in Loja, Ecuador:
+concerts, fairs, public events. It answers the way someone from Loja would.
 
 ## What it does
 
